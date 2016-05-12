@@ -29,37 +29,51 @@ Function Get-RecoverMessages {
 		$node1 = $server + "-001"
 		$node2 = $server + "-002"
 
+        Write-Host '-----------------------------------------------------------------------------------'
+        Write-Host 'Starting the recover message process in' $node1 'and' $node2
+        Write-Host '-----------------------------------------------------------------------------------'
+
 		startProcess $node1 $node2 $timeRecoverIDK $timeRecoverIDF;
 
+        Write-Host ''
+        Write-Host '-----------------------------------------------------------------------------------'
+        Write-Host 'Finished the recover message process in' $node1 'and' $node2
+        Write-Host '-----------------------------------------------------------------------------------'
 	}	
-
 }
 
 function startProcess($server1, $server2, $idk, $idf) {
 
+    Write-Host 'Stage 1 ---------------------------------------------------------------------------'
+
+    Write-Host 'Stage 1 >> Checking environment and LGW status'
+
     $server1IsValid = isValid $server1
+
+    Write-Host 'Stage 1 ['$server1'] >> Is it a valid server?' $server1IsValid
+
     $server2IsValid = isValid $server2
+
+    Write-Host 'Stage 1 ['$server2'] >> Is it a valid node?' $server2IsValid
+
+    Write-Host 'Stage 2 ---------------------------------------------------------------------------'
+
+    Write-Host 'Stage 2 >> Checking who is master'
 
     if ($server1IsValid) {
 
         $dateNode1 = Invoke-Command -ComputerName $server1 -Credential $cred -ScriptBlock {
 
             $finds = (Select-String -Path "D:\LOG\IAGLGW\AMDWLGW.log" -SimpleMatch "be Master")
-            
-			$result = 1
-			if ($finds -is [system.array]) { 
-				$result = ($finds[-1]).Line.Substring(0, 19)
-			} elseif ($finds -isnot [system.array]) { 
-				$result = ($finds).Line.Substring(0, 19)
-			}
-			return $result
+            return ($finds[-1]).Line.Substring(0, 19)
 
         }
 
+        Write-Host 'Stage 2 ['$server1'] >> Date / Time:' $dateNode1
+
     } else {
 
-		Write-Host ''
-		Write-Host $server1 'will not recover messages'
+		Write-Host 'Stage 2 ['$server1'] >> Date / Time: null'
 
 	}
 
@@ -68,57 +82,70 @@ function startProcess($server1, $server2, $idk, $idf) {
         $dateNode2 = Invoke-Command -ComputerName $server2 -Credential $cred -ScriptBlock {
 
             $finds = (Select-String -Path "D:\LOG\IAGLGW\AMDWLGW.log" -SimpleMatch "be Master")
-			$result = 0
-			if ($finds -is [system.array]) { 
-				$result = ($finds[-1]).Line.Substring(0, 19)
-			} elseif ($finds -isnot [system.array]) { 
-				$result = ($finds).Line.Substring(0, 19)
-			}
-			return $result
+            return ($finds[-1]).Line.Substring(0, 19)
 
 	    } 
+
+        Write-Host 'Stage 2 ['$server2'] >> Date / Time:' $dateNode2
     
     } else {
 
-		Write-Host ''
-		Write-Host $server2 'will not recover messages'
+		Write-Host 'Stage 2 ['$server2'] >> Date / Time: null'
     
     }
 
     if ($server1IsValid -and $server2IsValid) {
-
         if ($dateNode1 -gt $dateNode2) {
             $master = $server1
             $slave = $server2
+
+            Write-Host 'Stage 2 ['$server1'] >> Is it master or slave? master'
+            Write-Host 'Stage 2 ['$server2'] >> Is it master or slave? slave'
+
         } else {
             $master = $server2
             $slave = $server1
+
+            Write-Host 'Stage 2 ['$server1'] >> Is it master or slave? slave'
+            Write-Host 'Stage 2 ['$server2'] >> Is it master or slave? master'
         }
-    
     } elseif ($server1IsValid) {
-    
         $master = $server1
         $slave = ""
-    
+
+        Write-Host 'Stage 2 ['$server1'] >> Is it master or slave? master'
+        Write-Host 'Stage 2 ['$server2'] >> Server is invalid and will not recover messages'
     } elseif ($server2IsValid) {
-        
         $master = $server2
         $slave = ""
-    
-    } else {
 
+        Write-Host 'Stage 2 ['$server1'] >> Server is invalid and will not recover messages'
+        Write-Host 'Stage 2 ['$server2'] >> Is it master or slave? master'
+    } else {
         $master = ""
         $slave = ""
-
+        
+        Write-Host 'Stage 2 ['$server1'] >> Server is invalid and will not recover messages'
+        Write-Host 'Stage 2 ['$server2'] >> Server is invalid and will not recover messages'
     }
+
+    Write-Host 'Stage 3 ---------------------------------------------------------------------------'
+
+    Write-Host 'Stage 3 >> Stopping servers'
 
     if ($slave -ne "") {
         stopLGW $slave
+        Write-Host 'Stage 3 ['$slave'] >> Server stopped'
     }
 
     if ($master -ne "") {
         stopLGW $master
+        Write-Host 'Stage 3 ['$master'] >> Server stopped'
     }
+
+    Write-Host 'Stage 4 ---------------------------------------------------------------------------'
+
+    Write-Host 'Stage 4 >> Copying messages from Processed to Received folder'
 
     if ($master -ne "") {
         copyMessages $master $idk $idf
@@ -128,15 +155,17 @@ function startProcess($server1, $server2, $idk, $idf) {
         copyMessages $slave $idk $idf
     }
 
-    if ($server1IsValid) {
-        startLGW $serve1
-		Start-Sleep -Seconds 30
-    }
+    Write-Host 'Stage 5 ---------------------------------------------------------------------------'
+    
+    Write-Host 'Stage 5 >> Starting servers'
 
-    if ($server2IsValid) {
+    if ($server1IsValid -or $server2IsValid) {
+        startLGW $server1
+        Write-Host 'Stage 5 ['$server1'] >> Server started'
+        
         startLGW $server2
+        Write-Host 'Stage 5 ['$server2'] >> Server started'
     }
-
 }
 
 function isValid($server) {
@@ -148,8 +177,8 @@ function isValid($server) {
 	        $service = (Get-Service -name "MEV_AMDWLGW").Status
 	        $environment = $env:ENVIRONMENT
 		
-	        Write-Host ''
-	        Write-Host 'Checking' $node '>> Service is' $service 'and Env is' $environment
+	        Write-Host 'Stage 1 ['$node'] >> Environment:' $environment
+            Write-Host 'Stage 1 ['$node'] >> LGW status:' $service
 
             return ($service -eq "Running" -and ($environment -eq "OPE" -or $environment -eq "PPE"))
 
@@ -157,7 +186,6 @@ function isValid($server) {
     } else {
         return $false
     }
-
 }
 
 function stopLGW($server) {
@@ -165,12 +193,12 @@ function stopLGW($server) {
 	Invoke-Command -ComputerName $server -Credential $cred -ScriptBlock {
 
         $node = $env:COMPUTERNAME
-		
-	    Write-Host ''
-	    Write-Host 'Stopping' $node
 
         cmd.exe /c 'D:\Atos\scripts\stopLGW.bat'
 
+        while (Get-Job -State "Running") {
+            Start-Sleep 1
+        }
     }
 }
 
@@ -184,9 +212,6 @@ function copyMessages($server, $idk, $idf) {
         $node = $env:COMPUTERNAME
 	    $environment = $env:ENVIRONMENT
 
-        Write-Host ''
-	    Write-Host $node '>> copying messages from processed to received'
-		
 	    $folders = Get-ChildItem -Path "D:\DATA\persistency\$environment\qp\queues\"
 
         foreach ($folder in $folders) {
@@ -198,12 +223,23 @@ function copyMessages($server, $idk, $idf) {
 
                 if ($folder.Name.Contains("IDK")) {
                     
-                    Get-ChildItem -Path $processed -File *.MSG -Recurse | where {$_.CreationTime -ge $timeRecoverIDK} | Copy-Item -Destination $received
+                    $messages_idk = Get-ChildItem -Path $processed -File *.MSG -Recurse | where {$_.CreationTime -ge $timeRecoverIDK} 
+
+                    foreach ($message_idk in $messages_idk) {
+                        Copy-Item $message_idk -Destination $received
+
+                        Write-Host 'Stage 4 ['$node'] >> Copying' $message_idk
+                    }
                 
                 } elseif ($folder.Name.Contains("IDF")) {
 
-                    Get-ChildItem -Path $processed -File *.MSG -Recurse | where {$_.CreationTime -ge $timerecoverIDF} | Copy-Item -Destination $received
-                    
+                    $messages_idf = Get-ChildItem -Path $processed -File *.MSG -Recurse | where {$_.CreationTime -ge $timerecoverIDF}
+
+                    foreach ($message_idf in $messages_idf) {
+                        Copy-Item $message_idf -Destination $received
+
+                        Write-Host 'Stage 4 ['$node'] >> Copying' $message_idf
+                    }
                 }
             }
         }
@@ -215,12 +251,12 @@ function startLGW($server) {
     Invoke-Command -ComputerName $server -Credential $cred -ScriptBlock {
 
         $node = $env:COMPUTERNAME
-	    Write-Host ''
-	    Write-Host 'Starting' $node
-
         $environment = $env:ENVIRONMENT
-        cmd.exe /c "D:\Atos\scripts\startLGW.bat $environment"
-    
-    }
 
+        cmd.exe /c "D:\Atos\scripts\startLGW.bat $environment"
+
+        while (Get-Job -State "Running") {
+            Start-Sleep 1
+        }
+    }
 }
