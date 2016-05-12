@@ -1,4 +1,4 @@
-﻿Function Get-RecoverMessages {
+Function Get-RecoverMessages {
     
 	[CmdletBinding()]
     Param (
@@ -32,7 +32,7 @@
 		startProcess $node1 $node2 $timeRecoverIDK $timeRecoverIDF;
 
 	}	
-	
+
 }
 
 function startProcess($server1, $server2, $idk, $idf) {
@@ -45,7 +45,14 @@ function startProcess($server1, $server2, $idk, $idf) {
         $dateNode1 = Invoke-Command -ComputerName $server1 -Credential $cred -ScriptBlock {
 
             $finds = (Select-String -Path "D:\LOG\IAGLGW\AMDWLGW.log" -SimpleMatch "be Master")
-            return ($finds[-1]).Line.Substring(0, 19)
+            
+			$result = 1
+			if ($finds -is [system.array]) { 
+				$result = ($finds[-1]).Line.Substring(0, 19)
+			} elseif ($finds -isnot [system.array]) { 
+				$result = ($finds).Line.Substring(0, 19)
+			}
+			return $result
 
         }
 
@@ -61,7 +68,13 @@ function startProcess($server1, $server2, $idk, $idf) {
         $dateNode2 = Invoke-Command -ComputerName $server2 -Credential $cred -ScriptBlock {
 
             $finds = (Select-String -Path "D:\LOG\IAGLGW\AMDWLGW.log" -SimpleMatch "be Master")
-            return ($finds[-1]).Line.Substring(0, 19)
+			$result = 0
+			if ($finds -is [system.array]) { 
+				$result = ($finds[-1]).Line.Substring(0, 19)
+			} elseif ($finds -isnot [system.array]) { 
+				$result = ($finds).Line.Substring(0, 19)
+			}
+			return $result
 
 	    } 
     
@@ -115,13 +128,13 @@ function startProcess($server1, $server2, $idk, $idf) {
         copyMessages $slave $idk $idf
     }
 
-    if ($master -ne "") {
-        startLGW $master
-		Start-Sleep -Seconds 60
+    if ($server1IsValid) {
+        startLGW $serve1
+		Start-Sleep -Seconds 30
     }
 
-    if ($slave -ne "") {
-        startLGW $slave
+    if ($server2IsValid) {
+        startLGW $server2
     }
 
 }
@@ -211,5 +224,3 @@ function startLGW($server) {
     }
 
 }
-
-
