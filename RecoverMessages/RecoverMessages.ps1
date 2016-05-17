@@ -159,13 +159,16 @@ function startProcess($server1, $server2, $idk, $idf) {
     
     Write-Host 'Stage 5 >> Starting servers'
 
-    if ($server1IsValid -or $server2IsValid) {
-        startLGW $server1
-        Write-Host 'Stage 5 ['$server1'] >> Server started'
-        
-        startLGW $server2
-        Write-Host 'Stage 5 ['$server2'] >> Server started'
+    if ($master -ne "") {
+        startLGW $master
+        Write-Host 'Stage 5 ['$master'] >> Server started as master'
     }
+
+    if ($slave -ne "") {
+        startLGW $slave
+        Write-Host 'Stage 5 ['$slave'] >> Server started as slave'
+    }
+
 }
 
 function isValid($server) {
