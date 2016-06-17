@@ -36,11 +36,11 @@ foreach ($DAY in $FOLDER_LIST) {
 			foreach ($DISCIPLINE in $DISCIPLINE_LIST) {
 				if ($SPORT.Name -eq $DISCIPLINE) {
 					
-					$FOLDER = $FOLDER + "\" + $SPORT
+					$FOLDER_TMP = $FOLDER + "\" + $SPORT
 					
 					write-host ""
 					write-host "Compressing messages from $SPORT"
-					create-7zip "$FOLDER" "$BASE_FOLDER\$DISCIPLINE $EVENT $NAME.zip"
+					create-7zip "$FOLDER_TMP" "$BASE_FOLDER\$DISCIPLINE $EVENT $NAME.zip"
 				}
 			}
 		}
