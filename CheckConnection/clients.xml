@@ -1,0 +1,6 @@
+<client-list>
+	<client id="3" name="DFV-1" live-feed="PDF,PiT" backup-feed="PDF,PiT" http="http://server1:8580/service" ack="yes" encode="yes" receive-null="no" clientDelayCheck="no" clientDelay="0"/>
+	<client id="4" name="DFV-2" live-feed="PDF,PiT" backup-feed="PDF,PiT" http="http://server2:8580" ack="yes" encode="yes" receive-null="no" clientDelayCheck="no" clientDelay="0"/>
+	<client id="5" name="DFV-3" live-feed="PDF,PiT" backup-feed="PDF,PiT" http="http://server3/service" ack="yes" encode="yes" receive-null="no" clientDelayCheck="no" clientDelay="0"/>
+	<client id="6" name="DFV-4" live-feed="PDF,PiT" backup-feed="PDF,PiT" http="http://server4/" ack="yes" encode="yes" receive-null="no" clientDelayCheck="no" clientDelay="0"/>
+</client-list>
